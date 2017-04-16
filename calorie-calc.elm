@@ -1,6 +1,6 @@
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onInput, on)
+import Html.Events exposing (onInput, on, targetValue)
 import String exposing (..)
 import Json.Decode as Json
 
@@ -27,7 +27,7 @@ type Msg
     = Weight String
     | Height String
     | Age String
-    | SetSex Sex
+    | SetSex String
 
 update: Msg -> Model -> Model
 update msg model =
@@ -41,8 +41,14 @@ update msg model =
         Age newAgeString ->
             calcCalories { model | ageYears = Result.withDefault 0 (String.toInt newAgeString) }
 
-        SetSex newSex ->
-            calcCalories { model | sex = newSex }
+        SetSex newSexStr ->
+            case newSexStr of
+                "Female" ->
+                    calcCalories { model | sex = Female }
+                "Male" ->
+                    calcCalories { model | sex = Male }
+                _ ->
+                    model
 
 calcCalories: Model -> Model
 calcCalories model =
@@ -51,11 +57,20 @@ calcCalories model =
             (model.weightInLbs / 2.2,  model.heightInInches * 2.54)
 
     in
-        { model | calorieNeeds = calcCalorieNeeds weightInKg heightInCm model.ageYears }
+        { model | calorieNeeds = calcCalorieNeeds weightInKg heightInCm model.ageYears model.sex }
 
-calcCalorieNeeds: Float -> Float -> Int -> Int
-calcCalorieNeeds weightInKg heightInCm ageYears =
-    round ((10 * weightInKg) + (6.25 * heightInCm) - (5 * Basics.toFloat ageYears))
+calcCalorieNeeds: Float -> Float -> Int -> Sex -> Int
+calcCalorieNeeds weightInKg heightInCm ageYears sex =
+    round ((10 * weightInKg) + (6.25 * heightInCm) - (5 * Basics.toFloat ageYears) + (sexConstantFactor sex))
+
+sexConstantFactor: Sex -> Float
+sexConstantFactor sex =
+    case sex of
+        Female ->
+            -161.0
+        Male ->
+            5.0
+
 
 view : Model -> Html Msg
 view model =
@@ -73,7 +88,7 @@ view model =
                  , input [ type_ "number", Html.Attributes.value (toString model.ageYears), onInput Age ] []
                  ]
         , div [] [ label [] [ text "What is your biological sex?" ]
-                 , select [ required True ]
+                 , select [ required True, onChange SetSex  ]
                     [ option [ Html.Attributes.value "Female" ] [ text "Female" ]
                     , option [ Html.Attributes.value "Male" ] [ text "Male" ]
                     ]
@@ -83,3 +98,7 @@ view model =
             , h2 [] [ text ((toString model.calorieNeeds) ++ " calories") ]
             ]
         ]
+
+onChange : (String -> msg) -> Attribute msg
+onChange handler =
+  on "change" <| Json.map handler <| Json.at ["target", "value"] Json.string
