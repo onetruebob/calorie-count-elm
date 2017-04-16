@@ -20,7 +20,6 @@ type alias Model =
 
 model: Model
 model = calcCalories (Model 150 66 30 Female 0)
---model = Model 150 66 30 Female 0
 
 -- Update
 type Msg
@@ -71,7 +70,7 @@ sexConstantFactor sex =
         Male ->
             5.0
 
-
+-- View
 view : Model -> Html Msg
 view model =
     div []
